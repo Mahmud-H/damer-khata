@@ -5,10 +5,12 @@
     <span class="title">দামের খাতা</span>
   </div>
   <div class="actions">
+    <button class="lock-btn" id="top-theme-btn" title="ডার্ক মোড" style="font-size:18px;">🌙</button>
     <div class="sales-badge" id="top-sales-badge">আজ বিক্রি: ০টা</div>
     <button class="lock-btn" id="top-lock-btn" title="তালা লাগান" style="display:none;">🔒</button>
   </div>
 </header>
+
 
 <!-- MAIN CONTAINER -->
 <main id="app-content">
@@ -36,9 +38,13 @@
     <!-- Controls Row -->
     <div class="controls-row">
       <span class="item-count-text" id="items-count-display">মোট ০টি জিনিস</span>
-      <div class="view-toggle">
-        <button id="view-list-btn" class="view-btn active">☰ তালিকা</button>
-        <button id="view-grid-btn" class="view-btn">▦ ছবি</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button type="button" id="home-sort-btn" class="chip" style="margin:0; padding:4px 10px; font-size:14px; font-weight:700;">⇅ সাজান</button>
+        <button type="button" id="home-select-btn" class="chip" style="margin:0; padding:4px 10px; font-size:14px; font-weight:700;">☑️ সিলেক্ট</button>
+        <div class="view-toggle">
+          <button id="view-list-btn" class="view-btn active" title="তালিকা">☰</button>
+          <button id="view-grid-btn" class="view-btn" title="ছবি">▦</button>
+        </div>
       </div>
     </div>
 
@@ -51,6 +57,19 @@
       <div class="empty-icon">📦</div>
       <div class="empty-title">কোনো জিনিস পাওয়া যায়নি</div>
       <div style="font-size:16px;">নতুন জিনিস যোগ করতে নিচে "মাল যোগ" চাপুন।</div>
+    </div>
+
+    <!-- FLOATING MULTI-SELECT ACTION BAR -->
+    <div class="selection-bar" id="selection-action-bar">
+      <div class="selection-bar-left">
+        <span class="selection-count" id="selection-count-text">০টি নির্বাচিত</span>
+        <button type="button" id="select-all-btn" style="color:var(--primary); font-size:13px; font-weight:700; background:none; border:none; padding:0; cursor:pointer; text-decoration:underline;">সব সিলেক্ট</button>
+      </div>
+      <div class="selection-bar-actions">
+        <button type="button" class="btn-selection" id="bulk-move-btn" title="অন্য ব্যাচে নিন">📦 ব্যাচ বদল</button>
+        <button type="button" class="btn-selection btn-selection-danger" id="bulk-delete-btn" title="ডিলিট করুন">🗑️ মুছুন</button>
+        <button type="button" class="btn-selection-cancel" id="cancel-selection-btn" title="বাতিল">✕</button>
+      </div>
     </div>
   </section>
 
@@ -492,6 +511,13 @@
         <div class="tile-title">Backup · PIN · Update</div>
         <div class="tile-desc">সেটিংস ও সিঙ্ক</div>
       </div>
+
+      <!-- Tile 9: ড্রপডাউন পরিচালনা -->
+      <div class="more-tile" id="tile-manage-dropdowns">
+        <div class="tile-icon">🏷️</div>
+        <div class="tile-title">ড্রপডাউন পরিচালনা</div>
+        <div class="tile-desc">বাজার, ধরন ও খরচের তালিকা</div>
+      </div>
     </div>
 
     <!-- Lock Now Button -->
@@ -686,6 +712,92 @@
         <input type="text" inputmode="numeric" id="recovery-cost-input" class="form-input" placeholder="যেমন: ৪৮০০">
       </div>
       <button type="button" id="recovery-submit-btn" class="btn-primary" style="margin-top:10px;">যাচাই করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: জিনিস সাজান (SORT OPTIONS) -->
+<div class="modal-overlay" id="overlay-sort">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">⇅ জিনিস সাজানোর ক্রম</h3>
+      <button class="sheet-close-btn" id="sort-close-btn">✕</button>
+    </div>
+    <div class="sheet-body" style="padding-bottom:20px;">
+      <div class="sort-options-list">
+        <button type="button" class="sort-option-btn active" data-sort="newest">🕒 নতুন যোগ করা প্রথমে</button>
+        <button type="button" class="sort-option-btn" data-sort="oldest">⏳ পুরোনো মাল প্রথমে</button>
+        <button type="button" class="sort-option-btn" data-sort="top_sales">🔥 সবচেয়ে বেশি বিক্রি হওয়া</button>
+        <button type="button" class="sort-option-btn" data-sort="low_stock">⚠️ কম স্টক (আগে ফুরাবে)</button>
+        <button type="button" class="sort-option-btn" data-sort="high_stock">📦 বেশি স্টক আছে</button>
+        <button type="button" class="sort-option-btn" data-sort="price_asc">💵 দাম কম থেকে বেশি</button>
+        <button type="button" class="sort-option-btn" data-sort="price_desc">💰 দাম বেশি থেকে কম</button>
+        <button type="button" class="sort-option-btn" data-sort="name_asc">🔤 নাম অনুযায়ী (অ-হ)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: ব্যাচ স্থানান্তর (MOVE TO ANOTHER BATCH) -->
+<div class="modal-overlay" id="overlay-batch-move">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">📦 ব্যাচ পরিবর্তন করুন</h3>
+      <button class="sheet-close-btn" id="batch-move-close-btn">✕</button>
+    </div>
+    <div class="sheet-body">
+      <p style="font-size:16px; margin-bottom:12px; color:var(--text-light);" id="batch-move-target-count">নির্বাচিত আইটেম অন্য ব্যাচে স্থানান্তর করুন:</p>
+      <div class="form-group">
+        <label class="form-label">কোন ব্যাচে সরাবেন?</label>
+        <select id="batch-move-select" class="form-select">
+          <!-- Dynamically filled -->
+        </select>
+      </div>
+      <button type="button" id="batch-move-confirm-btn" class="btn-primary" style="margin-top:14px;">স্থানান্তর নিশ্চিত করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: ড্রপডাউন পরিচালনা (DROPDOWNS / CUSTOM LISTS MANAGER) -->
+<div class="modal-overlay" id="overlay-dropdown-manager">
+  <div class="bottom-sheet" style="max-height:85vh;">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">🏷️ ড্রপডাউন ও তালিকা পরিচালনা</h3>
+      <button class="sheet-close-btn" id="dropdown-manager-close-btn">✕</button>
+    </div>
+    <div class="sheet-body" style="padding-bottom:24px;">
+      <!-- Section 1: কিনার জায়গার নাম (Markets) -->
+      <div class="card" style="margin-bottom:14px;">
+        <h4 style="font-size:18px; font-weight:700; color:var(--primary); margin-bottom:8px;">🏬 কিনার বাজার / জায়গার নাম</h4>
+        <div id="manage-markets-list" class="manage-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="manage-new-market-input" class="form-input" placeholder="নতুন বাজারের নাম..." style="flex:1;">
+          <button type="button" id="manage-add-market-btn" class="btn-primary" style="width:auto; padding:0 16px;">+ যোগ</button>
+        </div>
+      </div>
+
+      <!-- Section 2: মালের ধরন (Categories) -->
+      <div class="card" style="margin-bottom:14px;">
+        <h4 style="font-size:18px; font-weight:700; color:var(--primary); margin-bottom:8px;">🏷️ মালের ধরন / ক্যাটাগরি</h4>
+        <div id="manage-cats-list" class="manage-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="manage-new-cat-input" class="form-input" placeholder="নতুন ধরনের নাম..." style="flex:1;">
+          <button type="button" id="manage-add-cat-btn" class="btn-primary" style="width:auto; padding:0 16px;">+ যোগ</button>
+        </div>
+      </div>
+
+      <!-- Section 3: খরচ খাত (Expense Types) -->
+      <div class="card" style="margin-bottom:14px;">
+        <h4 style="font-size:18px; font-weight:700; color:var(--primary); margin-bottom:8px;">💸 খরচের খাত</h4>
+        <div id="manage-expenses-list" class="manage-tags-container" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="manage-new-expense-input" class="form-input" placeholder="নতুন খরচের নাম..." style="flex:1;">
+          <button type="button" id="manage-add-expense-btn" class="btn-primary" style="width:auto; padding:0 16px;">+ যোগ</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -64,7 +64,7 @@
 
   // --- 2. DATA STATE & STORE ---
   const STORAGE_KEY = 'damer_khata_master_data';
-  const CURRENT_APP_VERSION = '1.0.0';
+  const CURRENT_APP_VERSION = '1.0.1';
 
   let state = {
     version: 1,
@@ -82,6 +82,8 @@
     tomb: {},
     prefs: {
       viewMode: 'list',
+      sortOrder: 'newest',
+      theme: 'light',
       pinEnabled: false,
       pinHash: '',
       bioEnabled: false,
@@ -90,7 +92,10 @@
       storeCode: '',
       scriptUrl: '',
       lastCat: 'all',
-      serviceRates: {}
+      serviceRates: {},
+      customMarkets: ['চকবাজার', 'বাবুরহাট', 'ইসলামপুর', 'গুলিস্তান', 'বঙ্গবাজার', 'নরসিংদী বাজার', 'স্থানীয় বাজার'],
+      customCategories: ['কাপড়', 'প্লাস্টিক', 'খেলনা', 'মেয়েদের জিনিস', 'মুদি', 'অন্যান্য'],
+      customExpenseTypes: ['বিদ্যুৎ বিল', 'চা-নাস্তা', 'দোকান ভাড়া', 'মেরামত', 'পরিবহন', 'মোবাইল/নেট', 'অন্য খরচ']
     }
   };
 
@@ -103,6 +108,8 @@
   let pendingPhotoSlot = null;
   let undoTimeout = null;
   let syncDebounceTimer = null;
+  let selectionMode = false;
+  let selectedItemIds = new Set();
 
   function generateId(prefix = 'id') {
     return prefix + '_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
@@ -143,6 +150,19 @@
       state.storeCode = Math.floor(10000000 + Math.random() * 90000000).toString();
       state.prefs.storeCode = state.storeCode;
     }
+
+    // Ensure custom dropdown lists exist
+    if (!Array.isArray(state.prefs.customMarkets) || state.prefs.customMarkets.length === 0) {
+      state.prefs.customMarkets = ['চকবাজার', 'বাবুরহাট', 'ইসলামপুর', 'গুলিস্তান', 'বঙ্গবাজার', 'নরসিংদী বাজার', 'স্থানীয় বাজার'];
+    }
+    if (!Array.isArray(state.prefs.customCategories) || state.prefs.customCategories.length === 0) {
+      state.prefs.customCategories = ['কাপড়', 'প্লাস্টিক', 'খেলনা', 'মেয়েদের জিনিস', 'মুদি', 'অন্যান্য'];
+    }
+    if (!Array.isArray(state.prefs.customExpenseTypes) || state.prefs.customExpenseTypes.length === 0) {
+      state.prefs.customExpenseTypes = ['বিদ্যুৎ বিল', 'চা-নাস্তা', 'দোকান ভাড়া', 'মেরামত', 'পরিবহন', 'মোবাইল/নেট', 'অন্য খরচ'];
+    }
+    if (!state.prefs.sortOrder) state.prefs.sortOrder = 'newest';
+    if (!state.prefs.theme) state.prefs.theme = 'light';
   }
 
   function saveState(skipSync = false) {
@@ -160,6 +180,225 @@
     if (!skipSync && state.prefs.scriptUrl) {
       triggerDebouncedSync();
     }
+  }
+
+  // --- 2.5 THEME & CUSTOM DROPDOWN LISTS ---
+  function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    document.body.classList.toggle('dark-theme', isDark);
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    const btn = document.getElementById('top-theme-btn');
+    if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+    state.prefs.theme = isDark ? 'dark' : 'light';
+  }
+
+  function toggleTheme() {
+    const newTheme = (state.prefs.theme === 'dark') ? 'light' : 'dark';
+    applyTheme(newTheme);
+    saveState();
+    showToast(newTheme === 'dark' ? '🌙 ডার্ক মোড চালু হয়েছে' : '☀️ লাইট মোড চালু হয়েছে');
+  }
+
+  function populateMarketDropdowns() {
+    const markets = state.prefs.customMarkets || [];
+    const selects = ['batch-market-select', 'bulk-market'];
+    selects.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const curr = el.value;
+      el.innerHTML = '';
+      markets.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        el.appendChild(opt);
+      });
+      const otherOpt = document.createElement('option');
+      otherOpt.value = '__other__';
+      otherOpt.textContent = '+ নতুন জায়গা যোগ করুন...';
+      el.appendChild(otherOpt);
+      if (curr && (markets.includes(curr) || curr === '__other__')) {
+        el.value = curr;
+      } else if (markets.length > 0) {
+        el.value = markets[0];
+      }
+    });
+  }
+
+  function populateCategoryDropdowns() {
+    const cats = state.prefs.customCategories || [];
+    const selects = ['batch-item-cat', 'bulk-cat', 'single-cat'];
+    selects.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const curr = el.value;
+      el.innerHTML = '';
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        el.appendChild(opt);
+      });
+      const otherOpt = document.createElement('option');
+      otherOpt.value = '__other__';
+      otherOpt.textContent = '+ নতুন ধরন যোগ করুন...';
+      el.appendChild(otherOpt);
+      if (curr && (cats.includes(curr) || curr === '__other__')) {
+        el.value = curr;
+      } else if (cats.length > 0) {
+        el.value = cats[0];
+      }
+    });
+
+    // Category chips on Home
+    const chipsContainer = document.getElementById('category-chips');
+    if (chipsContainer) {
+      chipsContainer.innerHTML = `
+        <div class="chip ${activeCategoryFilter === 'all' ? 'active' : ''}" data-cat="all">সব</div>
+        <div class="chip ${activeCategoryFilter === 'low' ? 'active' : ''}" data-cat="low">কম আছে</div>
+      `;
+      cats.forEach(c => {
+        const chip = document.createElement('div');
+        chip.className = `chip ${activeCategoryFilter === c ? 'active' : ''}`;
+        chip.dataset.cat = c;
+        chip.textContent = c;
+        chipsContainer.appendChild(chip);
+      });
+      chipsContainer.querySelectorAll('.chip').forEach(ch => {
+        ch.onclick = function () {
+          chipsContainer.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          ch.classList.add('active');
+          activeCategoryFilter = ch.dataset.cat;
+          renderHomeItems();
+        };
+      });
+    }
+  }
+
+  function addCustomMarket(name) {
+    name = (name || '').trim();
+    if (!name) return;
+    if (!state.prefs.customMarkets.includes(name)) {
+      state.prefs.customMarkets.push(name);
+      saveState();
+      populateMarketDropdowns();
+      renderDropdownManager();
+      showToast(`✓ নতুন বাজার "${name}" যুক্ত হয়েছে`);
+    }
+  }
+
+  function removeCustomMarket(name) {
+    state.prefs.customMarkets = state.prefs.customMarkets.filter(m => m !== name);
+    saveState();
+    populateMarketDropdowns();
+    renderDropdownManager();
+    showToast(`"${name}" মুছে ফেলা হয়েছে`);
+  }
+
+  function addCustomCategory(name) {
+    name = (name || '').trim();
+    if (!name) return;
+    if (!state.prefs.customCategories.includes(name)) {
+      state.prefs.customCategories.push(name);
+      saveState();
+      populateCategoryDropdowns();
+      renderDropdownManager();
+      showToast(`✓ নতুন ধরন "${name}" যুক্ত হয়েছে`);
+    }
+  }
+
+  function removeCustomCategory(name) {
+    state.prefs.customCategories = state.prefs.customCategories.filter(c => c !== name);
+    saveState();
+    populateCategoryDropdowns();
+    renderDropdownManager();
+    showToast(`"${name}" মুছে ফেলা হয়েছে`);
+  }
+
+  function addCustomExpenseType(name) {
+    name = (name || '').trim();
+    if (!name) return;
+    if (!state.prefs.customExpenseTypes.includes(name)) {
+      state.prefs.customExpenseTypes.push(name);
+      saveState();
+      renderDropdownManager();
+      showToast(`✓ নতুন খরচের খাত "${name}" যুক্ত হয়েছে`);
+    }
+  }
+
+  function removeCustomExpenseType(name) {
+    state.prefs.customExpenseTypes = state.prefs.customExpenseTypes.filter(e => e !== name);
+    saveState();
+    renderDropdownManager();
+    showToast(`"${name}" মুছে ফেলা হয়েছে`);
+  }
+
+  function renderDropdownManager() {
+    const mList = document.getElementById('manage-markets-list');
+    if (mList) {
+      mList.innerHTML = '';
+      (state.prefs.customMarkets || []).forEach(m => {
+        const pill = document.createElement('div');
+        pill.className = 'manage-tag-pill';
+        pill.innerHTML = `<span>${m}</span><button type="button" class="manage-tag-del">✕</button>`;
+        pill.querySelector('.manage-tag-del').onclick = () => removeCustomMarket(m);
+        mList.appendChild(pill);
+      });
+    }
+
+    const cList = document.getElementById('manage-cats-list');
+    if (cList) {
+      cList.innerHTML = '';
+      (state.prefs.customCategories || []).forEach(c => {
+        const pill = document.createElement('div');
+        pill.className = 'manage-tag-pill';
+        pill.innerHTML = `<span>${c}</span><button type="button" class="manage-tag-del">✕</button>`;
+        pill.querySelector('.manage-tag-del').onclick = () => removeCustomCategory(c);
+        cList.appendChild(pill);
+      });
+    }
+
+    const eList = document.getElementById('manage-expenses-list');
+    if (eList) {
+      eList.innerHTML = '';
+      (state.prefs.customExpenseTypes || []).forEach(e => {
+        const pill = document.createElement('div');
+        pill.className = 'manage-tag-pill';
+        pill.innerHTML = `<span>${e}</span><button type="button" class="manage-tag-del">✕</button>`;
+        pill.querySelector('.manage-tag-del').onclick = () => removeCustomExpenseType(e);
+        eList.appendChild(pill);
+      });
+    }
+  }
+
+  function recalculateOverheadsForBatch(targetBatchId) {
+    let batch = state.trips.find(t => t.id === targetBatchId);
+    if (!batch) return;
+
+    let totalOverhead = computeBatchOverhead(batch);
+    let batchItems = state.items.filter(it => it.batchId === targetBatchId && !state.tomb[it.id]);
+    let totalGoodsCost = batchItems.reduce((acc, it) => acc + (it.totalCost || 0), 0);
+
+    batchItems.forEach(item => {
+      let share = 0;
+      if (totalGoodsCost > 0) {
+        share = (item.totalCost / totalGoodsCost) * totalOverhead;
+      } else if (batchItems.length > 0) {
+        share = totalOverhead / batchItems.length;
+      }
+      item.batchShare = share;
+
+      let completedSales = state.sales.filter(s => s.itemId === item.id && s.status === 'completed');
+      if (item.isAuto30 && completedSales.length === 0) {
+        let calc = computeItemCostAndStock(item);
+        item.sellPrice = suggest30PercentPrice(calc.unitCost);
+      }
+      item.u = Date.now();
+    });
   }
 
   // --- 3. TOAST & NOTIFICATIONS ---
@@ -419,6 +658,44 @@
       countDisplay.textContent = `মোট ${toBn(activeItems.length)}টি জিনিস`;
     }
 
+    // Sort items
+    const sortOrder = state.prefs.sortOrder || 'newest';
+    activeItems.sort((a, b) => {
+      if (sortOrder === 'newest') return (b.created || 0) - (a.created || 0);
+      if (sortOrder === 'oldest') return (a.created || 0) - (b.created || 0);
+      if (sortOrder === 'top_sales') {
+        let aSold = state.sales.filter(s => s.itemId === a.id && s.status === 'completed').reduce((acc, s) => acc + s.qty, 0);
+        let bSold = state.sales.filter(s => s.itemId === b.id && s.status === 'completed').reduce((acc, s) => acc + s.qty, 0);
+        return bSold - aSold;
+      }
+      if (sortOrder === 'low_stock') {
+        return computeItemCostAndStock(a).availableStock - computeItemCostAndStock(b).availableStock;
+      }
+      if (sortOrder === 'high_stock') {
+        return computeItemCostAndStock(b).availableStock - computeItemCostAndStock(a).availableStock;
+      }
+      if (sortOrder === 'price_asc') return (a.sellPrice || 0) - (b.sellPrice || 0);
+      if (sortOrder === 'price_desc') return (b.sellPrice || 0) - (a.sellPrice || 0);
+      if (sortOrder === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'bn');
+      return 0;
+    });
+
+    // Update selection action bar
+    const selBar = document.getElementById('selection-action-bar');
+    const selCount = document.getElementById('selection-count-text');
+    const selBtn = document.getElementById('home-select-btn');
+    if (selBar) {
+      if (selectionMode) {
+        selBar.classList.add('active');
+        if (selCount) selCount.textContent = `${toBn(selectedItemIds.size)}টি নির্বাচিত`;
+      } else {
+        selBar.classList.remove('active');
+      }
+    }
+    if (selBtn) {
+      selBtn.classList.toggle('active', selectionMode);
+    }
+
     if (activeItems.length === 0) {
       if (listContainer) listContainer.innerHTML = '';
       if (gridContainer) gridContainer.innerHTML = '';
@@ -439,6 +716,12 @@
         let calc = computeItemCostAndStock(item);
         const card = document.createElement('div');
         card.className = 'item-card-list';
+
+        // Checkbox for selection mode
+        let checkboxHtml = '';
+        if (selectionMode) {
+          checkboxHtml = `<input type="checkbox" class="item-select-checkbox" data-id="${item.id}" ${selectedItemIds.has(item.id) ? 'checked' : ''}>`;
+        }
 
         // Thumb
         let thumbHtml = '';
@@ -473,6 +756,7 @@
         }
 
         card.innerHTML = `
+          ${checkboxHtml}
           ${thumbHtml}
           <div class="item-info">
             <div class="item-name">${item.name}</div>
@@ -484,12 +768,21 @@
           </div>
           <div class="item-actions">
             <div class="item-price">${formatMoney(item.sellPrice || 0)}</div>
-            <button class="sell-btn" data-id="${item.id}" ${calc.availableStock === 0 ? 'disabled' : ''}>বিক্রি</button>
+            ${selectionMode ? '' : `<button class="sell-btn" data-id="${item.id}" ${calc.availableStock === 0 ? 'disabled' : ''}>বিক্রি</button>`}
           </div>
         `;
 
-        // Card click opens edit sheet (PIN protected)
+        // Card click
         card.onclick = function (e) {
+          if (selectionMode) {
+            if (selectedItemIds.has(item.id)) {
+              selectedItemIds.delete(item.id);
+            } else {
+              selectedItemIds.add(item.id);
+            }
+            renderHomeItems();
+            return;
+          }
           if (e.target.classList.contains('sell-btn')) return;
           requireAuth(() => openEditItemSheet(item.id));
         };
@@ -514,6 +807,7 @@
         let calc = computeItemCostAndStock(item);
         const card = document.createElement('div');
         card.className = 'item-card-grid';
+        if (selectionMode) card.style.position = 'relative';
 
         let thumbHtml = '';
         if (item.photo) {
@@ -532,6 +826,11 @@
           stockClass = 'low';
           stockText = `আছে ${toBn(calc.availableStock)}টা`;
         }
+
+        if (selectionMode) {
+          thumbHtml += `<input type="checkbox" class="item-select-checkbox" data-id="${item.id}" ${selectedItemIds.has(item.id) ? 'checked' : ''} style="position:absolute; top:8px; left:8px; z-index:10;">`;
+        }
+
         thumbHtml += `<span class="grid-stock-overlay stock-badge ${stockClass}">${stockText}</span></div>`;
 
         card.innerHTML = `
@@ -540,12 +839,21 @@
             <div class="grid-name">${item.name}</div>
             <div class="grid-footer">
               <div class="grid-price">${formatMoney(item.sellPrice || 0)}</div>
-              <button class="sell-btn" data-id="${item.id}" ${calc.availableStock === 0 ? 'disabled' : ''}>বিক্রি</button>
+              ${selectionMode ? '' : `<button class="sell-btn" data-id="${item.id}" ${calc.availableStock === 0 ? 'disabled' : ''}>বিক্রি</button>`}
             </div>
           </div>
         `;
 
         card.onclick = function (e) {
+          if (selectionMode) {
+            if (selectedItemIds.has(item.id)) {
+              selectedItemIds.delete(item.id);
+            } else {
+              selectedItemIds.add(item.id);
+            }
+            renderHomeItems();
+            return;
+          }
           if (e.target.classList.contains('sell-btn')) return;
           requireAuth(() => openEditItemSheet(item.id));
         };
@@ -1022,16 +1330,37 @@
       let card = document.createElement('div');
       card.style.cssText = 'background:#F9FAFB; border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;';
       card.innerHTML = `
-        <div>
+        <div style="flex:1;">
           <div style="font-weight:700; font-size:16px;">${b.market} - ${formatBnDate(b.time)}</div>
           <div style="font-size:14px; color:var(--text-muted);">${toBn(bItems.length)}টি মাল · মোট খরচ ৳${toBn(totalCost)}</div>
         </div>
-        <button class="btn-secondary" style="height:36px; padding:4px 12px; font-size:15px; width:auto;">খুলুন</button>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-secondary rename-batch-btn" style="height:36px; padding:4px 8px; font-size:14px; width:auto;" title="বাজারের নাম বদলান">✏️ বাজার</button>
+          <button type="button" class="btn-primary open-batch-btn" style="height:36px; padding:4px 12px; font-size:14px; width:auto;">খুলুন</button>
+        </div>
       `;
 
-      card.querySelector('button').onclick = function () {
+      card.querySelector('.rename-batch-btn').onclick = function () {
+        let newName = prompt(`"${b.market}" এর নতুন নাম লিখুন:`, b.market);
+        if (newName && newName.trim()) {
+          newName = newName.trim();
+          b.market = newName;
+          addCustomMarket(newName);
+          state.items.filter(it => it.batchId === b.id).forEach(it => {
+            it.source = newName;
+            it.u = Date.now();
+          });
+          saveState();
+          renderPastBatches();
+          showToast(`✓ ব্যাচের বাজার "${newName}" করা হয়েছে`);
+        }
+      };
+
+      card.querySelector('.open-batch-btn').onclick = function () {
         activeBatchId = b.id;
-        document.getElementById('batch-market-select').value = b.market || 'চকবাজার';
+        populateMarketDropdowns();
+        const marketSelect = document.getElementById('batch-market-select');
+        if (marketSelect) marketSelect.value = b.market || 'চকবাজার';
         document.getElementById('batch-fare-input').value = toBn(b.fare || 0, false);
         renderBatchCostsList();
         renderBatchItemsList();
@@ -1104,17 +1433,20 @@
         <div class="form-group">
           <label class="form-label">ধরন</label>
           <select id="edit-item-cat" class="form-select">
-            <option value="কাপড়" ${item.cat === 'কাপড়' ? 'selected' : ''}>কাপড়</option>
-            <option value="প্লাস্টিক" ${item.cat === 'প্লাস্টিক' ? 'selected' : ''}>প্লাস্টিক</option>
-            <option value="খেলনা" ${item.cat === 'খেলনা' ? 'selected' : ''}>খেলনা</option>
-            <option value="মেয়েদের জিনিস" ${item.cat === 'মেয়েদের জিনিস' ? 'selected' : ''}>মেয়েদের জিনিস</option>
-            <option value="মুদি" ${item.cat === 'মুদি' ? 'selected' : ''}>মুদি</option>
-            <option value="অন্যান্য" ${item.cat === 'অন্যান্য' ? 'selected' : ''}>অন্যান্য</option>
+            ${(state.prefs.customCategories || []).map(c => `<option value="${c}" ${item.cat === c ? 'selected' : ''}>${c}</option>`).join('')}
+            ${item.cat && !state.prefs.customCategories.includes(item.cat) ? `<option value="${item.cat}" selected>${item.cat}</option>` : ''}
+            <option value="__other__">+ নতুন ধরন...</option>
           </select>
+          <input type="text" id="edit-item-custom-cat" class="form-input" placeholder="নতুন ধরন লিখুন" style="display:none; margin-top:6px;">
         </div>
         <div class="form-group">
           <label class="form-label">কোথা থেকে কেনা?</label>
-          <input type="text" id="edit-item-source" class="form-input" value="${item.source || ''}">
+          <select id="edit-item-source-select" class="form-select">
+            ${(state.prefs.customMarkets || []).map(m => `<option value="${m}" ${item.source === m ? 'selected' : ''}>${m}</option>`).join('')}
+            ${item.source && !state.prefs.customMarkets.includes(item.source) ? `<option value="${item.source}" selected>${item.source}</option>` : ''}
+            <option value="__other__">+ নতুন বাজার...</option>
+          </select>
+          <input type="text" id="edit-item-custom-source" class="form-input" placeholder="নতুন বাজার লিখুন" style="display:none; margin-top:6px;">
         </div>
       </div>
 
@@ -1255,11 +1587,41 @@
       };
     }
 
+    const editCatSelect = document.getElementById('edit-item-cat');
+    const editCustomCat = document.getElementById('edit-item-custom-cat');
+    if (editCatSelect && editCustomCat) {
+      editCatSelect.onchange = function () {
+        editCustomCat.style.display = (editCatSelect.value === '__other__') ? 'block' : 'none';
+        if (editCatSelect.value === '__other__') editCustomCat.focus();
+      };
+    }
+
+    const editSrcSelect = document.getElementById('edit-item-source-select');
+    const editCustomSrc = document.getElementById('edit-item-custom-source');
+    if (editSrcSelect && editCustomSrc) {
+      editSrcSelect.onchange = function () {
+        editCustomSrc.style.display = (editSrcSelect.value === '__other__') ? 'block' : 'none';
+        if (editSrcSelect.value === '__other__') editCustomSrc.focus();
+      };
+    }
+
     // Save changes
     document.getElementById('edit-save-btn').onclick = function () {
       item.name = document.getElementById('edit-item-name').value.trim() || item.name;
-      item.cat = document.getElementById('edit-item-cat').value;
-      item.source = document.getElementById('edit-item-source').value.trim();
+
+      let chosenCat = editCatSelect.value;
+      if (chosenCat === '__other__') {
+        chosenCat = editCustomCat.value.trim() || 'অন্যান্য';
+        addCustomCategory(chosenCat);
+      }
+      item.cat = chosenCat;
+
+      let chosenSrc = editSrcSelect.value;
+      if (chosenSrc === '__other__') {
+        chosenSrc = editCustomSrc.value.trim() || '';
+        if (chosenSrc) addCustomMarket(chosenSrc);
+      }
+      item.source = chosenSrc;
       let baseQty = parseBn(document.getElementById('edit-item-qty').value);
       let baseCost = parseBn(document.getElementById('edit-item-cost').value);
       item.sellPrice = parseBn(document.getElementById('edit-item-sell').value);
@@ -3428,6 +3790,7 @@
     batchMarketSelect.onchange = function () {
       if (batchMarketSelect.value === '__other__') {
         batchCustomMarket.style.display = 'block';
+        batchCustomMarket.focus();
       } else {
         batchCustomMarket.style.display = 'none';
         let b = state.trips.find(t => t.id === activeBatchId);
@@ -3437,13 +3800,20 @@
         }
       }
     };
-    batchCustomMarket.oninput = function () {
-      let b = state.trips.find(t => t.id === activeBatchId);
-      if (b) {
-        b.market = batchCustomMarket.value.trim();
-        saveState();
+    batchCustomMarket.onchange = function () {
+      let val = batchCustomMarket.value.trim();
+      if (val) {
+        addCustomMarket(val);
+        batchMarketSelect.value = val;
+        batchCustomMarket.style.display = 'none';
+        let b = state.trips.find(t => t.id === activeBatchId);
+        if (b) {
+          b.market = val;
+          saveState();
+        }
       }
     };
+    batchCustomMarket.onblur = batchCustomMarket.onchange;
 
     // Batch Fare
     document.getElementById('batch-fare-input').oninput = function (e) {
@@ -3918,11 +4288,306 @@
     document.getElementById('more-lock-now-btn').onclick = function () {
       lockApp();
     };
+
+    // --- NEW FEATURES LISTENERS ---
+    // 1. Theme toggle
+    const themeBtn = document.getElementById('top-theme-btn');
+    if (themeBtn) {
+      themeBtn.onclick = toggleTheme;
+    }
+
+    // 2. Sort sheet & options
+    const sortBtn = document.getElementById('home-sort-btn');
+    if (sortBtn) {
+      sortBtn.onclick = function () {
+        const currentSort = state.prefs.sortOrder || 'newest';
+        document.querySelectorAll('.sort-option-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.sort === currentSort);
+        });
+        openSheet('overlay-sort');
+      };
+    }
+    const sortClose = document.getElementById('sort-close-btn');
+    if (sortClose) {
+      sortClose.onclick = function () {
+        closeSheet('overlay-sort');
+      };
+    }
+    document.querySelectorAll('.sort-option-btn').forEach(btn => {
+      btn.onclick = function () {
+        document.querySelectorAll('.sort-option-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.prefs.sortOrder = btn.dataset.sort;
+        saveState();
+        closeSheet('overlay-sort');
+        renderHomeItems();
+        showToast('✓ সাজানোর ক্রম পরিবর্তন করা হয়েছে');
+      };
+    });
+
+    // 3. Multi-select mode
+    const selectBtn = document.getElementById('home-select-btn');
+    if (selectBtn) {
+      selectBtn.onclick = function () {
+        selectionMode = !selectionMode;
+        if (!selectionMode) selectedItemIds.clear();
+        renderHomeItems();
+      };
+    }
+
+    const cancelSelectBtn = document.getElementById('cancel-selection-btn');
+    if (cancelSelectBtn) {
+      cancelSelectBtn.onclick = function () {
+        selectionMode = false;
+        selectedItemIds.clear();
+        renderHomeItems();
+      };
+    }
+
+    const selectAllBtn = document.getElementById('select-all-btn');
+    if (selectAllBtn) {
+      selectAllBtn.onclick = function () {
+        let activeItems = state.items.filter(it => !state.tomb[it.id]);
+        if (activeCategoryFilter === 'low') {
+          activeItems = activeItems.filter(it => computeItemCostAndStock(it).availableStock <= 2);
+        } else if (activeCategoryFilter !== 'all') {
+          activeItems = activeItems.filter(it => it.cat === activeCategoryFilter);
+        }
+        if (currentSearchQuery.trim() !== '') {
+          let q = currentSearchQuery.trim().toLowerCase();
+          activeItems = activeItems.filter(it => (it.name || '').toLowerCase().includes(q) || (it.cat || '').toLowerCase().includes(q));
+        }
+
+        if (selectedItemIds.size === activeItems.length && activeItems.length > 0) {
+          selectedItemIds.clear();
+        } else {
+          activeItems.forEach(it => selectedItemIds.add(it.id));
+        }
+        renderHomeItems();
+      };
+    }
+
+    // 4. Bulk delete
+    const bulkDelBtn = document.getElementById('bulk-delete-btn');
+    if (bulkDelBtn) {
+      setDoubleTapConfirm(bulkDelBtn, 'মুছে ফেলবেন?', function () {
+        if (selectedItemIds.size === 0) {
+          showToast('⚠️ কোনো জিনিস নির্বাচন করা হয়নি');
+          return;
+        }
+        let count = selectedItemIds.size;
+        selectedItemIds.forEach(id => {
+          state.tomb[id] = Date.now();
+        });
+        selectedItemIds.clear();
+        selectionMode = false;
+        saveState();
+        renderHomeItems();
+        renderStatsScreen();
+        showToast(`✓ ${toBn(count)}টি জিনিস মুছে ফেলা হয়েছে`);
+      });
+    }
+
+    // 5. Bulk batch move
+    const bulkMoveBtn = document.getElementById('bulk-move-btn');
+    if (bulkMoveBtn) {
+      bulkMoveBtn.onclick = function () {
+        if (selectedItemIds.size === 0) {
+          showToast('⚠️ আগে জিনিস নির্বাচন করুন');
+          return;
+        }
+        const moveSelect = document.getElementById('batch-move-select');
+        moveSelect.innerHTML = '<option value="__new__">+ নতুন আলাদা ব্যাচ তৈরি করুন</option>';
+        let nonTombBatches = state.trips.filter(t => !state.tomb[t.id]);
+        nonTombBatches.forEach(b => {
+          let bCount = state.items.filter(it => it.batchId === b.id && !state.tomb[it.id]).length;
+          let opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = `${b.market || 'বাজার'} (${formatBnDate(b.time)}) - ${toBn(bCount)}টি মাল`;
+          moveSelect.appendChild(opt);
+        });
+        document.getElementById('batch-move-target-count').textContent = `${toBn(selectedItemIds.size)}টি জিনিস অন্য ব্যাচে স্থানান্তর করুন:`;
+        openSheet('overlay-batch-move');
+      };
+    }
+
+    const batchMoveClose = document.getElementById('batch-move-close-btn');
+    if (batchMoveClose) {
+      batchMoveClose.onclick = function () {
+        closeSheet('overlay-batch-move');
+      };
+    }
+
+    const batchMoveConfirm = document.getElementById('batch-move-confirm-btn');
+    if (batchMoveConfirm) {
+      batchMoveConfirm.onclick = function () {
+        let targetBatchId = document.getElementById('batch-move-select').value;
+        if (targetBatchId === '__new__') {
+          let newBatch = {
+            id: generateId('batch'),
+            market: 'স্থানান্তরিত ব্যাচ',
+            fare: 0,
+            otherCosts: [],
+            time: Date.now(),
+            status: 'completed',
+            u: Date.now()
+          };
+          state.trips.push(newBatch);
+          targetBatchId = newBatch.id;
+        }
+
+        let affectedBatches = new Set();
+        affectedBatches.add(targetBatchId);
+        selectedItemIds.forEach(id => {
+          let it = state.items.find(x => x.id === id);
+          if (it) {
+            if (it.batchId) affectedBatches.add(it.batchId);
+            it.batchId = targetBatchId;
+            let batchObj = state.trips.find(t => t.id === targetBatchId);
+            if (batchObj && batchObj.market) it.source = batchObj.market;
+            it.u = Date.now();
+          }
+        });
+
+        affectedBatches.forEach(bId => {
+          recalculateOverheadsForBatch(bId);
+        });
+
+        let count = selectedItemIds.size;
+        selectedItemIds.clear();
+        selectionMode = false;
+        saveState();
+        closeSheet('overlay-batch-move');
+        renderHomeItems();
+        renderPastBatches();
+        renderStatsScreen();
+        showToast(`✓ ${toBn(count)}টি জিনিস ব্যাচে স্থানান্তরিত হয়েছে`);
+      };
+    }
+
+    // 6. Dropdowns manager sheet & dynamic options
+    const tileDropdowns = document.getElementById('tile-manage-dropdowns');
+    if (tileDropdowns) {
+      tileDropdowns.onclick = function () {
+        requireAuth(() => {
+          openSheet('overlay-dropdown-manager');
+          renderDropdownManager();
+        });
+      };
+    }
+
+    const dropdownClose = document.getElementById('dropdown-manager-close-btn');
+    if (dropdownClose) {
+      dropdownClose.onclick = function () {
+        closeSheet('overlay-dropdown-manager');
+      };
+    }
+
+    const addMarketBtn = document.getElementById('manage-add-market-btn');
+    if (addMarketBtn) {
+      addMarketBtn.onclick = function () {
+        const inp = document.getElementById('manage-new-market-input');
+        if (inp && inp.value.trim()) {
+          addCustomMarket(inp.value.trim());
+          inp.value = '';
+        }
+      };
+    }
+
+    const addCatBtn = document.getElementById('manage-add-cat-btn');
+    if (addCatBtn) {
+      addCatBtn.onclick = function () {
+        const inp = document.getElementById('manage-new-cat-input');
+        if (inp && inp.value.trim()) {
+          addCustomCategory(inp.value.trim());
+          inp.value = '';
+        }
+      };
+    }
+
+    const addExpenseBtn = document.getElementById('manage-add-expense-btn');
+    if (addExpenseBtn) {
+      addExpenseBtn.onclick = function () {
+        const inp = document.getElementById('manage-new-expense-input');
+        if (inp && inp.value.trim()) {
+          addCustomExpenseType(inp.value.trim());
+          inp.value = '';
+        }
+      };
+    }
+
+    // Inline dropdown "+ নতুন..." triggers
+    const batchCatSelect = document.getElementById('batch-item-cat');
+    if (batchCatSelect) {
+      batchCatSelect.onchange = function () {
+        if (batchCatSelect.value === '__other__') {
+          let newCat = prompt('নতুন ধরনের নাম লিখুন:');
+          if (newCat && newCat.trim()) {
+            newCat = newCat.trim();
+            addCustomCategory(newCat);
+            batchCatSelect.value = newCat;
+          } else {
+            batchCatSelect.value = state.prefs.customCategories[0] || 'অন্যান্য';
+          }
+        }
+      };
+    }
+
+    const bulkMarketSelect = document.getElementById('bulk-market');
+    if (bulkMarketSelect) {
+      bulkMarketSelect.onchange = function () {
+        if (bulkMarketSelect.value === '__other__') {
+          let newMarket = prompt('নতুন বাজারের নাম লিখুন:');
+          if (newMarket && newMarket.trim()) {
+            newMarket = newMarket.trim();
+            addCustomMarket(newMarket);
+            bulkMarketSelect.value = newMarket;
+          } else {
+            bulkMarketSelect.value = state.prefs.customMarkets[0] || 'চকবাজার';
+          }
+        }
+      };
+    }
+
+    const bulkCatSelect = document.getElementById('bulk-cat');
+    if (bulkCatSelect) {
+      bulkCatSelect.onchange = function () {
+        if (bulkCatSelect.value === '__other__') {
+          let newCat = prompt('নতুন ধরনের নাম লিখুন:');
+          if (newCat && newCat.trim()) {
+            newCat = newCat.trim();
+            addCustomCategory(newCat);
+            bulkCatSelect.value = newCat;
+          } else {
+            bulkCatSelect.value = state.prefs.customCategories[0] || 'অন্যান্য';
+          }
+        }
+      };
+    }
+
+    const singleCatSelect = document.getElementById('single-cat');
+    if (singleCatSelect) {
+      singleCatSelect.onchange = function () {
+        if (singleCatSelect.value === '__other__') {
+          let newCat = prompt('নতুন ধরনের নাম লিখুন:');
+          if (newCat && newCat.trim()) {
+            newCat = newCat.trim();
+            addCustomCategory(newCat);
+            singleCatSelect.value = newCat;
+          } else {
+            singleCatSelect.value = state.prefs.customCategories[0] || 'অন্যান্য';
+          }
+        }
+      };
+    }
   }
 
   // --- 20. INITIALIZATION ---
   window.addEventListener('DOMContentLoaded', function () {
     loadState();
+    applyTheme(state.prefs.theme || 'light');
+    populateMarketDropdowns();
+    populateCategoryDropdowns();
     setupEventListeners();
     updateLockIcon();
     renderHomeItems();
