@@ -1,0 +1,17 @@
+# Build and temporary files
+build_tmp/
+build_test/
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Keep release files
+!release/
+!release/damer-khata.apk
+!release/damer-khata.jks

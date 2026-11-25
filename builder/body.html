@@ -1,0 +1,695 @@
+<!-- TOP HEADER -->
+<header class="top-bar">
+  <div class="title-box">
+    <span style="font-size:24px;">🏪</span>
+    <span class="title">দামের খাতা</span>
+  </div>
+  <div class="actions">
+    <div class="sales-badge" id="top-sales-badge">আজ বিক্রি: ০টা</div>
+    <button class="lock-btn" id="top-lock-btn" title="তালা লাগান" style="display:none;">🔒</button>
+  </div>
+</header>
+
+<!-- MAIN CONTAINER -->
+<main id="app-content">
+
+  <!-- 1. SCREEN: দাম দেখুন (HOME) -->
+  <section id="screen-home" class="screen active">
+    <!-- Search Bar -->
+    <div class="search-container">
+      <input type="text" id="search-box" class="search-input" placeholder="নামের ২-৩ অক্ষর লিখুন..." autocomplete="off">
+      <button id="search-clear-btn" class="search-clear">✕</button>
+    </div>
+
+    <!-- Category Chips -->
+    <div class="chips-row" id="category-chips">
+      <div class="chip active" data-cat="all">সব</div>
+      <div class="chip" data-cat="low">কম আছে</div>
+      <div class="chip" data-cat="কাপড়">কাপড়</div>
+      <div class="chip" data-cat="প্লাস্টিক">প্লাস্টিক</div>
+      <div class="chip" data-cat="খেলনা">খেলনা</div>
+      <div class="chip" data-cat="মেয়েদের জিনিস">মেয়েদের জিনিস</div>
+      <div class="chip" data-cat="মুদি">মুদি</div>
+      <div class="chip" data-cat="অন্যান্য">অন্যান্য</div>
+    </div>
+
+    <!-- Controls Row -->
+    <div class="controls-row">
+      <span class="item-count-text" id="items-count-display">মোট ০টি জিনিস</span>
+      <div class="view-toggle">
+        <button id="view-list-btn" class="view-btn active">☰ তালিকা</button>
+        <button id="view-grid-btn" class="view-btn">▦ ছবি</button>
+      </div>
+    </div>
+
+    <!-- Items Container -->
+    <div id="items-list-container" class="items-list"></div>
+    <div id="items-grid-container" class="items-grid" style="display:none;"></div>
+    
+    <!-- Empty State -->
+    <div id="home-empty-state" class="empty-box" style="display:none;">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">কোনো জিনিস পাওয়া যায়নি</div>
+      <div style="font-size:16px;">নতুন জিনিস যোগ করতে নিচে "মাল যোগ" চাপুন।</div>
+    </div>
+  </section>
+
+  <!-- 2. SCREEN: মাল যোগ (ADD STOCK) -->
+  <section id="screen-add" class="screen">
+    <!-- Subtabs -->
+    <div class="subtabs">
+      <button class="subtab-btn active" id="subtab-batch-btn">ক) ব্যাচে কেনাকাটা</button>
+      <button class="subtab-btn" id="subtab-bulk-btn">খ) লিখে অনেকগুলো</button>
+      <button class="subtab-btn" id="subtab-single-btn">গ) একটা করে</button>
+    </div>
+
+    <!-- SUB-SCREEN A: ব্যাচে কেনাকাটা -->
+    <div id="subscreen-batch">
+      <div class="card" id="batch-header-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:20px; font-weight:700; color:var(--primary);">🛍️ চলতি ব্যাচ</h3>
+          <span id="batch-status-badge" style="font-size:14px; background:var(--primary-light); color:var(--primary); padding:3px 8px; border-radius:6px; font-weight:bold;">সক্রিয়</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">কোন বাজার থেকে কেনা?</label>
+          <div style="display:flex; gap:8px;">
+            <select id="batch-market-select" class="form-select" style="flex:1;">
+              <option value="চকবাজার">চকবাজার</option>
+              <option value="বাবুরহাট">বাবুরহাট</option>
+              <option value="ইসলামপুর">ইসলামপুর</option>
+              <option value="গুলিস্তান">গুলিস্তান</option>
+              <option value="বঙ্গবাজার">বঙ্গবাজার</option>
+              <option value="নরসিংদী বাজার">নরসিংদী বাজার</option>
+              <option value="স্থানীয় বাজার">স্থানীয় বাজার</option>
+              <option value="__other__">+ অন্য জায়গা...</option>
+            </select>
+            <input type="text" id="batch-custom-market" class="form-input" placeholder="বাজারের নাম" style="display:none; flex:1;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">গাড়ি ভাড়া (টাকা)</label>
+          <input type="text" inputmode="numeric" id="batch-fare-input" class="form-input" placeholder="যেমন: ৩০০" value="০">
+        </div>
+
+        <!-- Dynamic Other Costs -->
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="margin:0;">অন্যান্য খরচ (লেবার, ঘাট, কুরিয়ার...)</label>
+            <button type="button" id="batch-add-cost-btn" style="background:none; border:none; color:var(--primary); font-weight:bold; font-size:16px; cursor:pointer;">+ অন্য খরচ যোগ করুন</button>
+          </div>
+          <div id="batch-costs-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+
+        <div style="background:var(--primary-light); padding:10px 14px; border-radius:10px; font-weight:700; font-size:17px; color:var(--primary); margin-top:8px;" id="batch-overhead-summary">
+          ব্যাচের মোট খরচ: ৳০
+        </div>
+      </div>
+
+      <!-- Add Item to Batch Form -->
+      <div class="card">
+        <h4 style="font-size:19px; font-weight:700; margin-bottom:12px; color:var(--text);">+ ব্যাচে জিনিস যোগ করুন</h4>
+
+        <div style="display:flex; gap:12px; margin-bottom:12px; align-items:center;">
+          <div id="batch-item-photo-preview" class="thumb-box" style="width:72px; height:72px; cursor:pointer;" title="ছবি তুলুন বা বাছুন">
+            📷
+          </div>
+          <div style="flex:1;">
+            <button type="button" id="batch-item-photo-btn" class="btn-secondary" style="height:44px; font-size:16px;">📷 ছবি বাছুন</button>
+            <button type="button" id="batch-item-photo-clear" style="background:none; border:none; color:var(--danger); font-size:14px; margin-top:4px; display:none; cursor:pointer;">ছবি মুছুন</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">জিনিসের নাম *</label>
+          <input type="text" id="batch-item-name" class="form-input" placeholder="যেমন: লুঙ্গি আমানত শাহ">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ধরন</label>
+          <select id="batch-item-cat" class="form-select">
+            <option value="কাপড়">কাপড়</option>
+            <option value="প্লাস্টিক">প্লাস্টিক</option>
+            <option value="খেলনা">খেলনা</option>
+            <option value="মেয়েদের জিনিস">মেয়েদের জিনিস</option>
+            <option value="মুদি">মুদি</option>
+            <option value="অন্যান্য">অন্যান্য</option>
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label class="form-label">কয়টা কিনেছেন? *</label>
+            <input type="text" inputmode="numeric" id="batch-item-qty" class="form-input" placeholder="যেমন: ১২">
+          </div>
+          <div class="form-group">
+            <label class="form-label">মোট কেনা দাম (৳) *</label>
+            <input type="text" inputmode="numeric" id="batch-item-cost" class="form-input" placeholder="যেমন: ৪৮০০">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">প্রতি পিস বিক্রির দাম (৳)</label>
+          <input type="text" inputmode="numeric" id="batch-item-sell" class="form-input" placeholder="খালি রাখলে ৩০% লাভে বসবে">
+          <span style="font-size:14px; color:var(--text-light); margin-top:3px; display:block;" id="batch-item-sell-hint">খালি রাখলে খরচের উপর ৩০% লাভ ধরে ৫ টাকায় round করে বসবে।</span>
+        </div>
+
+        <!-- Variants Section -->
+        <div class="form-group">
+          <button type="button" id="batch-toggle-variants-btn" style="background:none; border:none; color:var(--primary); font-size:16px; font-weight:700; cursor:pointer;">+ সাইজ/রং আলাদা করুন (ঐচ্ছিক)</button>
+          <div id="batch-variants-box" style="display:none; margin-top:10px; background:#F9FAFB; padding:10px; border-radius:10px; border:1px dashed var(--border);">
+            <div id="batch-variants-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
+            <button type="button" id="batch-add-variant-row-btn" class="btn-secondary" style="height:38px; font-size:15px;">+ নতুন সাইজ/রং</button>
+          </div>
+        </div>
+
+        <button type="button" id="batch-save-item-btn" class="btn-primary" style="margin-top:10px;">+ ব্যাচে এই মাল যোগ করুন</button>
+      </div>
+
+      <!-- Batch Items List -->
+      <div class="card">
+        <h4 style="font-size:19px; font-weight:700; margin-bottom:12px; color:var(--text);">ব্যাচের মালের তালিকা</h4>
+        <div id="batch-items-container">
+          <div style="color:var(--text-light); text-align:center; padding:16px;">এখনো কোনো মাল যোগ করা হয়নি।</div>
+        </div>
+
+        <!-- Summary -->
+        <div style="border-top:2px dashed var(--border); margin-top:12px; padding-top:12px; font-size:18px; font-weight:800; color:var(--text);" id="batch-grand-total-bar">
+          মাল ৳০ + খরচ ৳০ = মোট ৳০
+        </div>
+
+        <button type="button" id="batch-finish-btn" class="btn-primary" style="margin-top:16px; background-color:var(--primary-dark);">✓ ব্যাচ শেষ করুন</button>
+      </div>
+
+      <!-- Past Batches List -->
+      <div class="card">
+        <h4 style="font-size:18px; font-weight:700; margin-bottom:10px; color:var(--text);">আগের ব্যাচগুলো</h4>
+        <div id="past-batches-container"></div>
+      </div>
+    </div>
+
+    <!-- SUB-SCREEN B: লিখে অনেকগুলো -->
+    <div id="subscreen-bulk" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:20px; font-weight:700; margin-bottom:10px; color:var(--primary);">📝 লিখে অনেকগুলো মাল যোগ</h3>
+        <p style="font-size:15px; color:var(--text-light); margin-bottom:12px;">প্রতি লাইনে লিখুন: নাম [স্পেস] কয়টা [স্পেস] মোটদাম [স্পেস] বিক্রিরদাম<br>উদাহরণ: <code>লুঙ্গি চেক ১২ ১২০০ ১৪০</code> বা <code>প্লাস্টিক জগ ১২টা ৮৪০ টাকা ৯০</code></p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">বাজার</label>
+            <select id="bulk-market" class="form-select">
+              <option value="চকবাজার">চকবাজার</option>
+              <option value="বাবুরহাট">বাবুরহাট</option>
+              <option value="ইসলামপুর">ইসলামপুর</option>
+              <option value="গুলিস্তান">গুলিস্তান</option>
+              <option value="নরসিংদী বাজার">নরসিংদী বাজার</option>
+              <option value="স্থানীয় বাজার">স্থানীয় বাজার</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">সাধারণ ধরন</label>
+            <select id="bulk-cat" class="form-select">
+              <option value="কাপড়">কাপড়</option>
+              <option value="প্লাস্টিক">প্লাস্টিক</option>
+              <option value="খেলনা">খেলনা</option>
+              <option value="মেয়েদের জিনিস">মেয়েদের জিনিস</option>
+              <option value="মুদি">মুদি</option>
+              <option value="অন্যান্য">অন্যান্য</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">মোট ভাড়া (৳)</label>
+            <input type="text" inputmode="numeric" id="bulk-fare" class="form-input" value="০">
+          </div>
+          <div class="form-group">
+            <label class="form-label">অন্য খরচ (৳)</label>
+            <input type="text" inputmode="numeric" id="bulk-other" class="form-input" value="০">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">মালের তালিকা লিখুন</label>
+          <textarea id="bulk-text-input" class="form-textarea" style="height:140px;" placeholder="লুঙ্গি চেক ১২ ১২০০ ১৪০&#10;প্লাস্টিক জগ ১২টা ৮৪০ ৯০"></textarea>
+        </div>
+
+        <div id="bulk-preview-box" style="margin-top:10px; display:none;">
+          <h5 style="font-size:16px; font-weight:bold; margin-bottom:6px;">যাচাই প্রিভিউ:</h5>
+          <div id="bulk-preview-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+
+        <button type="button" id="bulk-save-btn" class="btn-primary" style="margin-top:14px;">সবগুলো ব্যাচ হিসেবে সেভ করুন</button>
+      </div>
+    </div>
+
+    <!-- SUB-SCREEN C: একটা করে -->
+    <div id="subscreen-single" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:20px; font-weight:700; margin-bottom:12px; color:var(--primary);">📦 একটি জিনিস যোগ করুন</h3>
+
+        <div style="display:flex; gap:12px; margin-bottom:12px; align-items:center;">
+          <div id="single-photo-preview" class="thumb-box" style="width:72px; height:72px; cursor:pointer;" title="ছবি বাছুন">
+            📷
+          </div>
+          <div style="flex:1;">
+            <button type="button" id="single-photo-btn" class="btn-secondary" style="height:44px; font-size:16px;">📷 ছবি বাছুন</button>
+            <button type="button" id="single-photo-clear" style="background:none; border:none; color:var(--danger); font-size:14px; margin-top:4px; display:none; cursor:pointer;">ছবি মুছুন</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">জিনিসের নাম *</label>
+          <input type="text" id="single-name" class="form-input" placeholder="যেমন: বাচ্চাদের শীতের জ্যাকেট">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label class="form-label">ধরন</label>
+            <select id="single-cat" class="form-select">
+              <option value="কাপড়">কাপড়</option>
+              <option value="প্লাস্টিক">প্লাস্টিক</option>
+              <option value="খেলনা">খেলনা</option>
+              <option value="মেয়েদের জিনিস">মেয়েদের জিনিস</option>
+              <option value="মুদি">মুদি</option>
+              <option value="অন্যান্য">অন্যান্য</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">কোথা থেকে কেনা?</label>
+            <input type="text" id="single-source" class="form-input" placeholder="যেমন: ইসলামপুর">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label class="form-label">কয়টা কিনেছেন? *</label>
+            <input type="text" inputmode="numeric" id="single-qty" class="form-input" placeholder="১২">
+          </div>
+          <div class="form-group">
+            <label class="form-label">মোট কেনা দাম (৳) *</label>
+            <input type="text" inputmode="numeric" id="single-cost" class="form-input" placeholder="২৪০০">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label class="form-label">ভাড়া (টাকা)</label>
+            <input type="text" inputmode="numeric" id="single-fare" class="form-input" placeholder="০" value="০">
+          </div>
+          <div class="form-group">
+            <label class="form-label">অন্য খরচ (টাকা)</label>
+            <input type="text" inputmode="numeric" id="single-other" class="form-input" placeholder="০" value="০">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">প্রতি পিস বিক্রির দাম (৳) *</label>
+          <input type="text" inputmode="numeric" id="single-sell" class="form-input" placeholder="যেমন: ২৭০">
+        </div>
+
+        <!-- Live Breakdown Box -->
+        <div id="single-calc-box" style="background:#F0FDF4; border:1px solid #BBF7D0; padding:12px; border-radius:10px; margin-bottom:14px; font-size:16px;">
+          <div>প্রতি পিস মোট খরচ: <strong id="single-calc-unit-cost" style="color:var(--primary);">৳০</strong></div>
+          <div>প্রতি পিস লাভ: <strong id="single-calc-profit" style="color:var(--primary);">৳০</strong></div>
+          <div>সব বিক্রি হলে মোট লাভ: <strong id="single-calc-total-profit" style="color:var(--primary);">৳০</strong></div>
+          <div style="margin-top:6px;">
+            <a href="#" id="single-auto-30-link" style="color:var(--primary); font-weight:bold; text-decoration:underline;">৩০% লাভে দাম ৳০ — এটা বসান</a>
+          </div>
+        </div>
+
+        <!-- Variants -->
+        <div class="form-group">
+          <button type="button" id="single-toggle-variants-btn" style="background:none; border:none; color:var(--primary); font-size:16px; font-weight:700; cursor:pointer;">+ সাইজ/রং আলাদা করুন (ঐচ্ছিক)</button>
+          <div id="single-variants-box" style="display:none; margin-top:10px; background:#F9FAFB; padding:10px; border-radius:10px; border:1px dashed var(--border);">
+            <div id="single-variants-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;"></div>
+            <button type="button" id="single-add-variant-btn" class="btn-secondary" style="height:38px; font-size:15px;">+ নতুন সাইজ/রং</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button type="button" id="single-save-another-btn" class="btn-secondary" style="flex:1;">সেভ করে আরেকটা</button>
+          <button type="button" id="single-save-finish-btn" class="btn-primary" style="flex:1;">সেভ করে দাম দেখুন</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. SCREEN: হিসাব (ACCOUNTS & ANALYTICS - PIN PROTECTED) -->
+  <section id="screen-stats" class="screen">
+    <!-- Backup Warning Alert -->
+    <div id="backup-warning-banner" class="alert-box alert-warning" style="display:none;">
+      <span>⚠️ ৭ দিন ধরে Backup নেননি! ডাটা সুরক্ষিত রাখতে এখনই Backup নিন।</span>
+    </div>
+
+    <!-- 6 KPI Stat Boxes -->
+    <div class="stat-grid-6">
+      <div class="stat-box">
+        <div class="stat-label">আজ বিক্রি</div>
+        <div class="stat-value" id="kpi-today-sales">৳০</div>
+        <div class="stat-sub" id="kpi-today-details">০টা মাল, লাভ ৳০</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">এ পর্যন্ত আসল লাভ</div>
+        <div class="stat-value" id="kpi-net-profit" style="color:var(--primary);">৳০</div>
+        <div class="stat-sub">মাল+কমিশন − দোকান খরচ</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">মাল কিনতে মোট খরচ</div>
+        <div class="stat-value" id="kpi-total-purchase">৳০</div>
+        <div class="stat-sub" id="kpi-purchase-sub">ভাড়া ও অন্যান্য খরচসহ</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">দোকানে মাল আছে</div>
+        <div class="stat-value" id="kpi-stock-count">০টা</div>
+        <div class="stat-sub" id="kpi-stock-value">কেনা: ৳০, বেচলে: ৳০</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">বাকি পাওনা</div>
+        <div class="stat-value" id="kpi-total-due" style="color:var(--accent);">৳০</div>
+        <div class="stat-sub" id="kpi-due-count">০ জনের কাছে</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">ধার শোধ বাকি</div>
+        <div class="stat-value" id="kpi-total-loan" style="color:var(--danger);">৳০</div>
+        <div class="stat-sub">পরিশোধের বাকি</div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <!-- Chart 1: Last 14 Days -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h4 style="font-size:18px; font-weight:700;">📊 গত ১৪ দিনের বিক্রি ও লাভ</h4>
+        <span style="font-size:13px; color:var(--text-light);">সবুজ: বিক্রি | গাঢ়: লাভ</span>
+      </div>
+      <div class="chart-container" id="chart-14-days-container"></div>
+      <div style="font-size:15px; color:var(--text-muted); text-align:right; margin-top:6px;" id="chart-14-days-total">
+        ১৪ দিনের মোট: বিক্রি ৳০, লাভ ৳০
+      </div>
+    </div>
+
+    <!-- Chart 2: Category Breakdown -->
+    <div class="card">
+      <h4 style="font-size:18px; font-weight:700; margin-bottom:8px;">🏷️ কোন ধরনের মাল বেশি বিক্রি</h4>
+      <div id="chart-category-container"></div>
+    </div>
+
+    <!-- Chart 3: Expense Breakdown -->
+    <div class="card">
+      <h4 style="font-size:18px; font-weight:700; margin-bottom:8px;">💸 টাকা কোথায় খরচ হলো</h4>
+      <div id="chart-expenses-container"></div>
+    </div>
+
+    <!-- Dead Stock Alert -->
+    <div class="card" id="dead-stock-card" style="display:none; border-left:4px solid var(--accent);">
+      <h4 style="font-size:18px; font-weight:700; color:var(--accent); margin-bottom:6px;">⚠️ ৩০ দিনে বিক্রি হয়নি (আটকে থাকা টাকা)</h4>
+      <div id="dead-stock-list"></div>
+    </div>
+
+    <!-- Winter Stock Advisory -->
+    <div class="card" id="winter-stock-card" style="display:none; border-left:4px solid #0284C7; background:#F0F9FF;">
+      <h4 style="font-size:18px; font-weight:700; color:#0369A1; margin-bottom:6px;">❄️ শীতের মাল সতর্কতা</h4>
+      <p style="font-size:16px; color:#0C4A6E; margin-bottom:8px;" id="winter-stock-msg"></p>
+      <div id="winter-stock-list"></div>
+    </div>
+
+    <!-- Recent 30 Sales -->
+    <div class="card">
+      <h4 style="font-size:18px; font-weight:700; margin-bottom:10px;">🕒 সাম্প্রতিক ৩০টি বিক্রি</h4>
+      <div id="recent-sales-list"></div>
+    </div>
+
+    <!-- Reorder Low Stock & Top Sellers -->
+    <div class="card">
+      <h4 style="font-size:18px; font-weight:700; margin-bottom:10px; color:var(--warning);">⚠️ আবার আনতে হবে (২টা বা কম আছে)</h4>
+      <div id="low-stock-list"></div>
+    </div>
+
+    <div class="card">
+      <h4 style="font-size:18px; font-weight:700; margin-bottom:10px; color:var(--primary);">🔥 সবচেয়ে বেশি বিক্রি হওয়া মাল</h4>
+      <div id="top-sellers-list"></div>
+    </div>
+  </section>
+
+  <!-- 4. SCREEN: আরও (MORE - PIN PROTECTED) -->
+  <section id="screen-more" class="screen">
+    <div class="more-tiles-grid">
+      <!-- Tile 1: বাকির খাতা -->
+      <div class="more-tile" id="tile-due">
+        <div class="tile-icon">📒</div>
+        <div class="tile-title">বাকির খাতা</div>
+        <div class="tile-desc" id="tile-due-desc">মোট পাওনা ৳০</div>
+      </div>
+
+      <!-- Tile 2: দোকানের খরচ ও ক্যাশ -->
+      <div class="more-tile" id="tile-cash">
+        <div class="tile-icon">💰</div>
+        <div class="tile-title">দোকানের খরচ ও ক্যাশ</div>
+        <div class="tile-desc">ক্যাশ মেলানো ও খরচ</div>
+      </div>
+
+      <!-- Tile 3: ধারের হিসাব -->
+      <div class="more-tile" id="tile-loans">
+        <div class="tile-icon">🤝</div>
+        <div class="tile-title">ধারের হিসাব</div>
+        <div class="tile-desc" id="tile-loan-desc">বাকি ধার ৳০</div>
+      </div>
+
+      <!-- Tile 4: কেনার তালিকা -->
+      <div class="more-tile" id="tile-shopping">
+        <div class="tile-icon">🛒</div>
+        <div class="tile-title">কেনার তালিকা</div>
+        <div class="tile-desc">বাজারে যা যা কিনবেন</div>
+      </div>
+
+      <!-- Tile 5: রিচার্জ · বিকাশ · বিল -->
+      <div class="more-tile" id="tile-services">
+        <div class="tile-icon">📱</div>
+        <div class="tile-title">রিচার্জ · বিকাশ · বিল</div>
+        <div class="tile-desc">কমিশন ও হিসাব</div>
+      </div>
+
+      <!-- Tile 6: পাইকারের তালিকা -->
+      <div class="more-tile" id="tile-suppliers">
+        <div class="tile-icon">👥</div>
+        <div class="tile-title">পাইকারের তালিকা</div>
+        <div class="tile-desc">নাম ও ফোন নম্বর</div>
+      </div>
+
+      <!-- Tile 7: মাসিক রিপোর্ট -->
+      <div class="more-tile" id="tile-monthly">
+        <div class="tile-icon">📈</div>
+        <div class="tile-title">মাসিক রিপোর্ট</div>
+        <div class="tile-desc">লাভ-ক্ষতির বিস্তারিত</div>
+      </div>
+
+      <!-- Tile 8: Backup · PIN · Update -->
+      <div class="more-tile" id="tile-settings">
+        <div class="tile-icon">⚙️</div>
+        <div class="tile-title">Backup · PIN · Update</div>
+        <div class="tile-desc">সেটিংস ও সিঙ্ক</div>
+      </div>
+    </div>
+
+    <!-- Lock Now Button -->
+    <button type="button" id="more-lock-now-btn" class="btn-danger" style="margin-top:10px;">🔒 এখনই লক করুন</button>
+  </section>
+
+</main>
+
+<!-- BOTTOM NAVIGATION -->
+<nav class="bottom-nav">
+  <button class="nav-tab active" data-tab="home" id="tab-btn-home">
+    <span class="tab-icon">🏷️</span>
+    <span class="tab-label">দাম দেখুন</span>
+  </button>
+  <button class="nav-tab" data-tab="add" id="tab-btn-add">
+    <span class="tab-icon">➕</span>
+    <span class="tab-label">মাল যোগ</span>
+  </button>
+  <button class="nav-tab" data-tab="stats" id="tab-btn-stats">
+    <span class="tab-icon">📊</span>
+    <span class="tab-label">হিসাব</span>
+  </button>
+  <button class="nav-tab" data-tab="more" id="tab-btn-more">
+    <span class="tab-icon">☰</span>
+    <span class="tab-label">আরও</span>
+  </button>
+</nav>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-box" class="toast-container"></div>
+
+<!-- MODAL SHEET: বিক্রি CONFIRM -->
+<div class="modal-overlay" id="overlay-sale">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">মাল বিক্রি</h3>
+      <button class="sheet-close-btn" id="sale-close-btn">✕</button>
+    </div>
+    <div class="sheet-body">
+      <!-- Item Preview -->
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
+        <div id="sale-thumb" class="thumb-box" style="width:64px; height:64px;">📦</div>
+        <div>
+          <h4 id="sale-item-name" style="font-size:20px; font-weight:800; color:var(--text);">মাল</h4>
+          <div id="sale-item-stock-text" style="font-size:16px; color:var(--text-muted);">দোকানে আছে: ৫টা</div>
+        </div>
+      </div>
+
+      <!-- Variant Selector -->
+      <div id="sale-variant-container" class="form-group" style="display:none;">
+        <label class="form-label">সাইজ / রং বেছে নিন</label>
+        <div class="chips-row" id="sale-variant-chips" style="margin-bottom:0;"></div>
+      </div>
+
+      <!-- Quantity Stepper -->
+      <div class="form-group">
+        <label class="form-label">কয়টা বিক্রি করবেন?</label>
+        <div class="stepper-box">
+          <button type="button" class="stepper-btn" id="sale-qty-minus">−</button>
+          <input type="text" inputmode="numeric" id="sale-qty-input" class="stepper-val form-input" value="১">
+          <button type="button" class="stepper-btn" id="sale-qty-plus">+</button>
+        </div>
+      </div>
+
+      <!-- Price Per Piece -->
+      <div class="form-group">
+        <label class="form-label">প্রতি পিসের দাম (৳)</label>
+        <input type="text" inputmode="numeric" id="sale-price-input" class="form-input" style="font-size:24px; font-weight:bold; color:var(--primary);">
+        <div id="sale-price-warning" style="margin-top:4px; font-size:15px; font-weight:bold;"></div>
+      </div>
+
+      <!-- Total Amount -->
+      <div style="background:var(--primary-light); padding:12px 16px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <span style="font-size:18px; font-weight:700; color:var(--primary);">মোট টাকা:</span>
+        <span id="sale-total-display" style="font-size:28px; font-weight:800; color:var(--primary);">৳০</span>
+      </div>
+
+      <!-- Payment Method -->
+      <div class="form-group">
+        <label class="form-label">টাকা পরিশোধের ধরন</label>
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="sale-pay-cash-btn" class="chip active" style="flex:1; text-align:center; padding:10px;">💵 নগদ</button>
+          <button type="button" id="sale-pay-due-btn" class="chip" style="flex:1; text-align:center; padding:10px;">📒 বাকিতে</button>
+        </div>
+      </div>
+
+      <!-- Customer Selector for Due -->
+      <div id="sale-customer-section" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; padding:12px; border-radius:10px; margin-bottom:14px;">
+        <label class="form-label" style="color:#92400E;">কার কাছে বাকি রাখবেন?</label>
+        <select id="sale-customer-select" class="form-select" style="margin-bottom:8px;">
+          <option value="">কাস্টমার বাছুন...</option>
+        </select>
+        <button type="button" id="sale-add-customer-btn" style="background:none; border:none; color:var(--primary); font-weight:bold; font-size:16px; cursor:pointer;">+ নতুন কাস্টমার যোগ করুন</button>
+        
+        <div id="sale-new-customer-box" style="display:none; margin-top:8px;">
+          <input type="text" id="sale-new-cust-name" class="form-input" placeholder="কাস্টমারের নাম *" style="margin-bottom:6px;">
+          <input type="text" inputmode="tel" id="sale-new-cust-phone" class="form-input" placeholder="মোবাইল নম্বর (ঐচ্ছিক)">
+        </div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button type="button" id="sale-confirm-btn" class="btn-primary">বিক্রি নিশ্চিত করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: জিনিস বদলান (EDIT ITEM - PIN PROTECTED) -->
+<div class="modal-overlay" id="overlay-edit-item">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">জিনিস বদলান</h3>
+      <button class="sheet-close-btn" id="edit-close-btn">✕</button>
+    </div>
+    <div class="sheet-body" id="edit-item-body">
+      <!-- Dynamically rendered -->
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: আরও টাইল বিস্তারিত (MORE DETAIL SHEET) -->
+<div class="modal-overlay" id="overlay-more-detail">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title" id="more-detail-title">বিস্তারিত</h3>
+      <button class="sheet-close-btn" id="more-detail-close-btn">✕</button>
+    </div>
+    <div class="sheet-body" id="more-detail-body">
+      <!-- Dynamically filled depending on which tile was tapped -->
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: PIN ইনপুট -->
+<div class="modal-overlay" id="overlay-pin">
+  <div class="bottom-sheet" style="max-height:85vh;">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">🔒 ৪ সংখ্যার PIN দিন</h3>
+      <button class="sheet-close-btn" id="pin-close-btn">✕</button>
+    </div>
+    <div class="sheet-body" style="text-align:center;">
+      <p style="font-size:16px; color:var(--text-light); margin-bottom:10px;">হিসাব ও গোপন তথ্য দেখার জন্য PIN দিন</p>
+      
+      <!-- 4 PIN Dots -->
+      <div class="pin-dots">
+        <div class="pin-dot" id="pindot-0"></div>
+        <div class="pin-dot" id="pindot-1"></div>
+        <div class="pin-dot" id="pindot-2"></div>
+        <div class="pin-dot" id="pindot-3"></div>
+      </div>
+
+      <!-- Numeric Keypad -->
+      <div class="keypad">
+        <button class="keypad-btn" data-key="1">১</button>
+        <button class="keypad-btn" data-key="2">২</button>
+        <button class="keypad-btn" data-key="3">৩</button>
+        <button class="keypad-btn" data-key="4">৪</button>
+        <button class="keypad-btn" data-key="5">৫</button>
+        <button class="keypad-btn" data-key="6">৬</button>
+        <button class="keypad-btn" data-key="7">৭</button>
+        <button class="keypad-btn" data-key="8">৮</button>
+        <button class="keypad-btn" data-key="9">৯</button>
+        <button class="keypad-btn" id="pin-bio-btn" style="font-size:22px;">👆</button>
+        <button class="keypad-btn" data-key="0">০</button>
+        <button class="keypad-btn" id="pin-back-btn" style="font-size:22px;">⌫</button>
+      </div>
+
+      <div style="margin-top:24px;">
+        <button type="button" id="pin-forgot-btn" style="background:none; border:none; color:var(--text-light); font-size:16px; text-decoration:underline; cursor:pointer;">PIN ভুলে গেছেন?</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SHEET: PIN ভুলে গেছি RECOVERY -->
+<div class="modal-overlay" id="overlay-recovery">
+  <div class="bottom-sheet">
+    <div class="sheet-header">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">🔑 PIN উদ্ধার</h3>
+      <button class="sheet-close-btn" id="recovery-close-btn">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="alert-box alert-info">
+        নিরাপত্তা যাচাই: দোকানের যেকোনো একটি জিনিসের মোট কেনা দাম লিখুন (মাল যোগ করার সময় যা লিখেছিলেন)। এটা শুধু আপনি জানেন।
+      </div>
+      <div class="form-group">
+        <label class="form-label">যেকোনো একটি জিনিসের মোট কেনা দাম (৳)</label>
+        <input type="text" inputmode="numeric" id="recovery-cost-input" class="form-input" placeholder="যেমন: ৪৮০০">
+      </div>
+      <button type="button" id="recovery-submit-btn" class="btn-primary" style="margin-top:10px;">যাচাই করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN FILE INPUT FOR BROWSER DESKTOP TESTING -->
+<input type="file" id="browser-file-input" accept="image/*" style="display:none;">
+<input type="file" id="browser-backup-input" accept=".json,application/json" style="display:none;">
