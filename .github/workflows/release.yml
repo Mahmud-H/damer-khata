@@ -1,4 +1,4 @@
-name: Auto Release & Update
+name: Auto Release on Version Change
 
 on:
   push:
@@ -7,8 +7,6 @@ on:
     paths:
       - 'app.html'
       - 'release/**'
-      - 'app/**'
-      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -16,38 +14,30 @@ permissions:
 
 jobs:
   release:
-    name: Create GitHub Release
+    name: GitHub Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Extract App Version
-        id: get_version
+        id: version
         run: |
-          VERSION=$(grep -oP 'name="app-version"\s+content="\K[^"]+' app.html || echo "1.0.0")
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Found app version: $VERSION"
+          VER=$(grep -oP 'name="app-version"\s+content="\K[^"]+' app.html || echo "1.0.0")
+          echo "tag=v${VER}" >> $GITHUB_OUTPUT
 
-      - name: Publish or Update GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v${APP_VERSION}"
-          echo "Target Release Tag: $TAG"
-          
-          # Check if release tag already exists
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG exists. Uploading updated APK asset..."
-            gh release upload "$TAG" release/damer-khata.apk --clobber
-          else
-            echo "Creating new Release $TAG..."
-            gh release create "$TAG" release/damer-khata.apk \
-              --title "দামের খাতা $TAG" \
-              --notes "### 🚀 দামের খাতা (Damer Khata) $TAG
-              
-স্বয়ংক্রিয় আপডেট ও রিলিজ। 
-
-- **সরাসরি আপডেট**: ফোনে অ্যাপটি খোলা থাকলে ইন্টারনেট পেলে এটি নিজে থেকেই সর্বশেষ কোড নামিয়ে নেবে।
-- **নতুন ইনস্টলেশন**: নিচে সংযুক্ত \`damer-khata.apk\` ফাইলটি ডাউনলোড করে ইনস্টল করুন।"
-          fi
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "দামের খাতা ${{ steps.version.outputs.tag }}"
+          body: |
+            ### 🚀 দামের খাতা (Damer Khata) ${{ steps.version.outputs.tag }}
+            
+            স্বয়ংক্রিয় আপডেট ও নতুন রিলিজ।
+            
+            - **সরাসরি আপডেট**: ফোনে অ্যাপ খোলা থাকলে ইন্টারনেট পেলেই স্বয়ংক্রিয়ভাবে আপডেট হয়ে যাবে।
+            - **নতুন ইনস্টলেশন**: নিচে সংযুক্ত `damer-khata.apk` ফাইলটি ডাউনলোড করে ইনস্টল করুন।
+          files: |
+            release/damer-khata.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
